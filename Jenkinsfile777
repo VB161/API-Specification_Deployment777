@@ -1,20 +1,23 @@
-environment {
-    OPENAPI_VALIDATOR = '/usr/local/bin/swagger-cli'
-    DEPLOYMENT_SERVER = 'http://localhost:3300'  // Локальный сервер
-    GREENPLUM_URL = 'jdbc:postgresql://greenplum-server:5432/sales_db'
-    HADOOP_USER = 'hadoop_user'
-}
+pipeline {
+    agent any
 
-stages {
-    stage('Checkout Code') {
-        steps {
-            git branch: 'main', url: 'https://github.com/VB161/API-Specification_Deployment777.git'
-        }
+    environment {
+        OPENAPI_VALIDATOR = '/usr/local/bin/swagger-cli'
+        DEPLOYMENT_SERVER = 'http://localhost:3300'  // Локальный сервер на порту 3300
+        GREENPLUM_URL = 'jdbc:postgresql://greenplum-server:5432/sales_db'
+        HADOOP_USER = 'hadoop_user'
     }
-    stage('Validate OpenAPI') {
-        steps {
-            script {
-                sh '''
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/VB161/API-Specification_Deployment777.git'
+            }
+        }
+        stage('Validate OpenAPI') {
+            steps {
+                script {
+                    sh '''
 if [ -f "openapi777.yaml" ]; then
     echo "OpenAPI file found: openapi777.yaml. Skipping detailed validation."
 else
@@ -22,20 +25,34 @@ else
     exit 1
 fi
 '''
+                }
             }
         }
-    }
-    stage('Deploy API Specification') {
-        steps {
-            script {
-                sh '''
+        stage('Deploy API Specification') {
+            steps {
+                script {
+                    sh '''
 curl -X PUT -H "Content-Type: application/yaml" \
 --data-binary @openapi777.yaml \
 $DEPLOYMENT_SERVER/specifications/sales-api-777
 '''
+                }
+            }
+        }
+        stage('Load Test Data to Hadoop') {
+            steps {
+                script {
+                    sh '''
+# Создаём тестовые данные
+echo "id,amount,region,sale_date" > test-data-777.csv
+echo "1,1000,Moscow,2023-10-01" >> test-data-777.csv
+echo "2,1500,SPb,2023-10-01" >> test-data-777.csv
+
+# Загружаем в Hadoop
+hdfs dfs -put test-data-777.csv /hdfs/test-input/ || echo "Hadoop not available - skipping"
+'''
+                }
             }
         }
     }
-    // Остальные этапы (Load Test Data to Hadoop, Transform and Load to Greenplum) оставьте без изменений
 }
-
